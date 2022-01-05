@@ -6,12 +6,23 @@ object Main extends App{
 
   val path = "data/example.csv"
 
-  val spark = SparkSession.builder()
+  val spark = SparkSession.builder
     .master("local[*]") // local[*] Run Spark locally with as many worker threads as logical cores on your machine
-  .appName("CollaborativeLocationActivityRecommendations")
-  .getOrCreate()
-  val df = spark.read.csv(path)
-  df.show()
+    .appName("CollaborativeLocationActivityRecommendations")
+    .getOrCreate()
 
+  val datasetCSV = spark.read
+    .option("header", value = true)
+    .option("timestampFormat", "yyyy-MM-dd HH:mm:ss")
+    .csv(path)
+    .drop("label")
 
+  val datasetRDD = datasetCSV.rdd
+
+  datasetRDD.map(row => new DatasetPoint(
+    row(1).toString,
+    row(2).toString,
+    row(3).toString,
+    row(0). toString
+  )).take(10).foreach(println)
 }

@@ -2,8 +2,11 @@ package it.unibo.clar
 
 import com.github.nscala_time.time.Imports.DateTime
 
-
-
-abstract class Point(val altitude: Double,val longitude: Double, val latitude:Double, val timestamp:DateTime )
+abstract class Point(
+                      val latitude: Double,
+                      val longitude: Double,
+                      val altitude: Double,
+                      val timestamp: DateTime
+                    )
 
 
