@@ -23,13 +23,13 @@ object Main extends App{
   val datasetRDD = datasetCSV.rdd
 
 
-  datasetRDD.map(row =>(row(4), new DatasetPoint(
+  val datasetRDDMapped = datasetRDD.map(row =>(row(4), fromStrings(
     row(1).toString,
     row(2).toString,
     row(3).toString,
     row(0). toString
-  ))).foreach(println)
+  ))).cache()//.map((userId,trajectory)=>{})
 
-
+print(datasetRDDMapped.first())
 
 }
