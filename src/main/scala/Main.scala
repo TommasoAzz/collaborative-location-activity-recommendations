@@ -7,7 +7,7 @@ object Main extends App{
   val path = "data/example.csv"
 
   val spark = SparkSession.builder
-    .master("local[*]") // local[*] Run Spark locally with as many worker threads as logical cores on your machine
+    .master("local[1]") // local[*] Run Spark locally with as many worker threads as logical cores on your machine
     .appName("CollaborativeLocationActivityRecommendations")
     .getOrCreate()
 
@@ -17,12 +17,19 @@ object Main extends App{
     .csv(path)
     .drop("label")
 
+
+
+
   val datasetRDD = datasetCSV.rdd
 
-  datasetRDD.map(row => new DatasetPoint(
+
+  datasetRDD.map(row =>(row(4), new DatasetPoint(
     row(1).toString,
     row(2).toString,
     row(3).toString,
     row(0). toString
-  )).take(10).foreach(println)
+  ))).foreach(println)
+
+
+
 }
