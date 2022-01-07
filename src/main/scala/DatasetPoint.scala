@@ -8,4 +8,11 @@ case class DatasetPoint(
                          override val altitude: Double,
                          override val timestamp: DateTime
                        )
-  extends Point(latitude, longitude, altitude, timestamp)
+  extends Point(latitude, longitude, altitude, timestamp) {
+  def this(latitude: String, longitude: String, altitude: String, timestamp: String) = this(
+    latitude.toDouble,
+    longitude.toDouble,
+    altitude.toDouble,
+    TimestampFormatter(timestamp)
+  )
+}

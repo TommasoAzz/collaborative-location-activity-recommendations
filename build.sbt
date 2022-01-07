@@ -10,7 +10,7 @@ lazy val root = (project in file("."))
     idePackagePrefix := Some("it.unibo.clar"),
     libraryDependencies ++= Seq(
       "org.apache.spark" %% "spark-core" % "3.2.0",
-      "com.github.nscala-time" %% "nscala-time" % "2.30.0",
-      "org.apache.spark" %% "spark-sql" % "3.2.0"
+      "org.apache.spark" %% "spark-sql" % "3.2.0",
+      "com.github.nscala-time" %% "nscala-time" % "2.30.0"
     )
   )

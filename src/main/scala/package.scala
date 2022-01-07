@@ -1,10 +1,11 @@
 package it.unibo
 
 package object clar {
-  def pointFromRDDRow(lat: String, lon: String, alt: String, time: String): DatasetPoint = DatasetPoint(
-    lat.toDouble,
-    lon.toDouble,
-    alt.toDouble,
-    TimestampFormatter(time)
-  )
+  def time[R](block: => R): R = {
+    val t0 = System.nanoTime()
+    val result = block
+    val t1 = System.nanoTime()
+    println("Elapsed time: " + (t1 - t0) / 1000000 + "ms")
+    result
+  }
 }

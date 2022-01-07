@@ -1,4 +1,5 @@
 package it.unibo.clar
+
 import org.apache.spark.sql.SparkSession
 
 
@@ -6,7 +7,7 @@ object Main extends App {
   /*
    * Loading Spark.
    */
-  val spark = SparkSession.builder
+  val sparkSession = SparkSession.builder
     .master("local[*]") // local[*] Run Spark locally with as many worker threads as logical cores on your machine
     .appName("CollaborativeLocationActivityRecommendations")
     .getOrCreate()
@@ -15,20 +16,20 @@ object Main extends App {
    * Loading the dataset.
    */
   val path = "data/example.csv"
-  val datasetCSV = spark.read
+  val datasetCSV = sparkSession.read
     .option("header", value = true)
-    .option("timestampFormat", "yyyy-MM-dd HH:mm:ss")
+    .option("timestampFormat", TimestampFormatter.timestampPattern)
     .csv(path)
     .drop("label")
 
   /*
    * Loading and caching the RDD.
    */
-  val datasetRDD = datasetCSV.rdd.map(row => (row(4).toString.toInt, pointFromRDDRow(
-    row(1).toString,
-    row(2).toString,
-    row(3).toString,
-    row(0).toString
+  val datasetRDD = datasetCSV.rdd.map(row => (row(4).toString.toInt, new DatasetPoint(
+    latitude = row(1).toString,
+    longitude = row(2).toString,
+    altitude = row(3).toString,
+    timestamp = row(0).toString
   ))).cache()
 
   /*
