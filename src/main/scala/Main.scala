@@ -1,6 +1,9 @@
 package it.unibo.clar
 
+import org.apache.spark.RangePartitioner
 import org.apache.spark.sql.SparkSession
+
+import scala.math.sqrt
 
 
 object Main extends App {
@@ -28,7 +31,6 @@ object Main extends App {
   val datasetRDD = datasetCSV.rdd.map(row => (row(4).toString.toInt, new DatasetPoint(
     latitude = row(1).toString,
     longitude = row(2).toString,
-    altitude = row(3).toString,
     timestamp = row(0).toString
   ))).cache()
 
@@ -39,9 +41,16 @@ object Main extends App {
 
   pointsByUser.foreach(pair => {
     val userId = pair._1
-    val trajectory = pair._2
+    val trajectory = sparkSession.sparkContext.parallelize(pair._2.toSeq)
+      .zipWithIndex()
+      .map { case (k, v) => (v, k) }
+    val partitionSize = sqrt(trajectory.count()).toInt
+    val trajectoryRanged = trajectory.partitionBy(new RangePartitioner(partitionSize, trajectory))
+    val stayPoints = trajectoryRanged.mapPartitions(partition => {
+      computeStayPoint(partition.map(_._2).toSeq).iterator
+    })
 
-    println(s"USER: $userId")
-    println(s"TRAJECTORY LENGTH: ${trajectory.size}")
+
+    //println(indexKey.map { case (k, v) => s"(${k}, ${v})" }.collect().mkString("Array(", ", ", ")"))
   })
 }
