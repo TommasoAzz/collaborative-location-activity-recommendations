@@ -42,13 +42,7 @@ object Main extends App {
   pointsByUser.foreach(pair => {
     val userId = pair._1
     val trajectory = sparkSession.sparkContext.parallelize(pair._2.toSeq)
-      .zipWithIndex()
-      .map { case (k, v) => (v, k) }
-    val partitionSize = sqrt(trajectory.count()).toInt
-    val trajectoryRanged = trajectory.partitionBy(new RangePartitioner(partitionSize, trajectory))
-    val stayPoints = trajectoryRanged.mapPartitions(partition => {
-      computeStayPoint(partition.map(_._2).toSeq).iterator
-    })
+
 
 
     //println(indexKey.map { case (k, v) => s"(${k}, ${v})" }.collect().mkString("Array(", ", ", ")"))
