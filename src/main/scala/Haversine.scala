@@ -3,14 +3,19 @@ package it.unibo.clar
 import math._
 
 object Haversine {
-  val R = 6372.8 //radius in km
+  val R = 6378137d
 
   def haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double) = {
-    val dLat = (lat2 - lat1).toRadians
-    val dLon = (lon2 - lon1).toRadians
+    val dLat = math.toRadians(lat2 - lat1)
+    val dLon = math.toRadians(lon2 - lon1)
+    val lat1Rad = math.toRadians(lat1)
+    val lat2Rad = math.toRadians(lat2)
 
-    val a = pow(sin(dLat / 2), 2) + pow(sin(dLon / 2), 2) * cos(lat1.toRadians) * cos(lat2.toRadians)
-    val c = 2 * asin(sqrt(a))
+    val a =
+      math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.sin(dLon / 2) * math.sin(dLon / 2) * math.cos(lat1Rad) * math.cos(lat2Rad)
+    val c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
     R * c
   }
 }
