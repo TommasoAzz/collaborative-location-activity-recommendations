@@ -40,9 +40,12 @@ object Main extends App {
   pointsByUser.foreach(pair => {
     val userId = pair._1
     val trajectory: RDD[Point] = sparkSession.sparkContext.parallelize(pair._2.toSeq)
+    /**
+     * Verificare il parametro numSlices di parallelize.
+     */
 
-    // val stayPoints = compute(trajectory).count()
-    val stayPoints = computeStayPoints(trajectory.collect()).count(_.isInstanceOf[StayPoint])
+    val stayPoints = compute(trajectory).count()
+    // val stayPoints = computeStayPoints(pair._2.toSeq).count(_.isInstanceOf[StayPoint])
 
     println(s"USER: ${userId} STAY POINTS COMPUTED: ${stayPoints}")
 

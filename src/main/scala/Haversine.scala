@@ -1,11 +1,9 @@
 package it.unibo.clar
 
-import math._
-
 object Haversine {
   val R = 6378137d
 
-  def haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double) = {
+  def haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double = {
     val dLat = math.toRadians(lat2 - lat1)
     val dLon = math.toRadians(lon2 - lon1)
     val lat1Rad = math.toRadians(lat1)

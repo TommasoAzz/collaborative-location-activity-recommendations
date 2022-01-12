@@ -6,7 +6,7 @@ import org.joda.time.Seconds
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
-import scala.math.sqrt
+import scala.math.{pow, sqrt}
 
 package object clar {
   def time[R](block: => R): R = {
@@ -18,18 +18,23 @@ package object clar {
   }
 
   @tailrec
-  def compute(points: RDD[Point]): RDD[Point] = {
-    println("compute")
+  def compute(points: RDD[Point], iteration_index: Int = 0): RDD[Point] = {
+    /*
+     * Questo zipWithIndex() è overkill perché ogni volta deve scorrere l'RDD e rivoltarlo come un calzino.
+     * Dopodiché c'è uno split in sqrt(|trajectory|) forse eccessivo.
+     * Necessario mettere un cap alle iterazioni?
+     */
     val trajectory = points.zipWithIndex().map { case (point, index) => (index, point) }
-    val partitionSize = sqrt(trajectory.count()).toInt
-    val partitioner = new RangePartitioner(partitionSize, trajectory)
+    // val totalPartitions = sqrt(trajectory.count()).toInt
+    val totalPartitions = pow(trajectory.count(), 0.25).toInt
+    val partitioner = new RangePartitioner(totalPartitions, trajectory)
     val trajectoryRanged = trajectory.partitionBy(partitioner)
 
     val stayPoints = trajectoryRanged.mapPartitions(partition => {
       computeStayPoints(partition.map(_._2).toSeq).iterator
     })
-    if(points.count() - stayPoints.count() >= Config.LOOP_THRESHOLD) {
-      compute(stayPoints)
+    if(points.count() - stayPoints.count() >= Config.CARDINALITY_DELTA /*&& iteration_index < Config.MAX_ITERATIONS*/) {
+      compute(stayPoints/*, iteration_index + 1*/)
     } else {
       stayPoints.filter(p => p.isInstanceOf[StayPoint])
     }
