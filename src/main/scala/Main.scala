@@ -1,9 +1,7 @@
 package it.unibo.clar
 
-import org.apache.spark.RangePartitioner
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-
-import scala.math.sqrt
 
 
 object Main extends App {
@@ -41,9 +39,12 @@ object Main extends App {
 
   pointsByUser.foreach(pair => {
     val userId = pair._1
-    val trajectory = sparkSession.sparkContext.parallelize(pair._2.toSeq)
+    val trajectory: RDD[Point] = sparkSession.sparkContext.parallelize(pair._2.toSeq)
 
+    // val stayPoints = compute(trajectory).count()
+    val stayPoints = computeStayPoints(trajectory.collect()).count(_.isInstanceOf[StayPoint])
 
+    println(s"USER: ${userId} STAY POINTS COMPUTED: ${stayPoints}")
 
     //println(indexKey.map { case (k, v) => s"(${k}, ${v})" }.collect().mkString("Array(", ", ", ")"))
   })
