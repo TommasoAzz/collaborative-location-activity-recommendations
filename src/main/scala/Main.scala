@@ -42,7 +42,7 @@ object Main extends App {
     val trajectory: RDD[Point] = sparkSession.sparkContext.parallelize(pair._2.toSeq)
 
     // val stayPoints = compute(trajectory).count()
-    val stayPoints = computeStayPoints(trajectory.collect()).count(_.isInstanceOf[StayPoint])
+    val stayPoints = computeStayPoints(pair._2.toSeq).size
 
     println(s"USER: ${userId} STAY POINTS COMPUTED: ${stayPoints}")
 

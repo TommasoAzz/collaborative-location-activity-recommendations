@@ -47,7 +47,7 @@ package object clar {
       while (j < partition.size && inside) {
         val jth_element = partition(j)
         // DISTANCE CHECK
-        val latitudesLongitudes = (ith_element, jth_element) match {
+        /*val latitudesLongitudes = (ith_element, jth_element) match {
           case (dp1: DatasetPoint, dp2: DatasetPoint) => (dp1.latitude, dp1.longitude, dp2.latitude, dp2.longitude)
           case (sp: StayPoint, dp: DatasetPoint) => (sp.firstPoint.latitude, sp.firstPoint.longitude, dp.latitude, dp.longitude)
           case (dp: DatasetPoint, sp: StayPoint) => (dp.latitude, dp.longitude, sp.lastPoint.latitude, sp.lastPoint.longitude)
@@ -58,6 +58,12 @@ package object clar {
           lon1 = latitudesLongitudes._2,
           lat2 = latitudesLongitudes._3,
           lon2 = latitudesLongitudes._4
+        )*/
+        val distance = Haversine.haversine(
+          lat1 = ith_element.latitude,
+          lon1 = ith_element.longitude,
+          lat2 = jth_element.latitude,
+          lon2 = jth_element.longitude
         )
         inside = distance <= Config.DISTANCE_THRESHOLD
         j += 1
@@ -65,27 +71,31 @@ package object clar {
       // TIME CHECK
       val currentPoints = partition.slice(i, j)
 
-      val times = (ith_element, currentPoints.last) match {
+      /*val times = (ith_element, currentPoints.last) match {
         case (dp1: DatasetPoint, dp2: DatasetPoint) => (dp1.timestamp, dp2.timestamp)
         case (sp: StayPoint, dp: DatasetPoint) => (sp.firstPoint.timestamp, dp.timestamp)
         case (dp: DatasetPoint, sp: StayPoint) => (dp.timestamp, sp.lastPoint.timestamp)
         case (sp1: StayPoint, sp2: StayPoint) => (sp1.firstPoint.timestamp, sp2.lastPoint.timestamp)
       }
-      val timeDelta = Seconds.secondsBetween(times._1, times._2).getSeconds
+      val timeDelta = Seconds.secondsBetween(times._1, times._2).getSeconds*/
+      val timeDelta = Seconds.secondsBetween(ith_element.timestamp, currentPoints.last.timestamp).getSeconds
 
       if (timeDelta >= Config.TIME_THRESHOLD) {
-        val totalPoints = currentPoints.map(_.cardinality).sum
+        // val totalPoints = currentPoints.map(_.cardinality).sum
+        val totalPoints = j - i
         points += StayPoint(
-          latitude=currentPoints.map(p => p.latitude * p.cardinality).sum / totalPoints,
-          longitude=currentPoints.map(p => p.longitude * p.cardinality).sum / totalPoints,
-          firstPoint=ith_element,
-          lastPoint=currentPoints.last,
-          contributingPoints=totalPoints,
+          latitude = currentPoints.map(_.latitude).sum / totalPoints,
+          longitude = currentPoints.map(_.longitude).sum / totalPoints,
+//          firstPoint=ith_element,
+//          lastPoint=currentPoints.last,
+//          contributingPoints=totalPoints,
+          timeOfArrival = ith_element.timestamp,
+          timeOfLeave = currentPoints.last.timestamp
         )
       }
-      else {
-        points ++= currentPoints
-      }
+//      else {
+//        points ++= currentPoints
+//      }
 
       i = j
     }
