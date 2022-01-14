@@ -17,7 +17,7 @@ package object clar {
     result
   }
 
-  @tailrec
+  // @tailrec
   def compute(points: RDD[Point]): RDD[Point] = {
     println("compute")
     val trajectory = points.zipWithIndex().map { case (point, index) => (index, point) }
@@ -28,11 +28,12 @@ package object clar {
     val stayPoints = trajectoryRanged.mapPartitions(partition => {
       computeStayPoints(partition.map(_._2).toSeq).iterator
     })
-    if(points.count() - stayPoints.count() >= Config.LOOP_THRESHOLD) {
-      compute(stayPoints)
-    } else {
-      stayPoints.filter(p => p.isInstanceOf[StayPoint])
-    }
+//    if(points.count() - stayPoints.count() >= Config.LOOP_THRESHOLD) {
+//      compute(stayPoints)
+//    } else {
+//      stayPoints.filter(p => p.isInstanceOf[StayPoint])
+//    }
+    stayPoints
   }
 
   def computeStayPoints(partition: Seq[Point]): Seq[Point] = {
