@@ -17,51 +17,45 @@ package object clar {
     result
   }
 
-  @tailrec
-  def compute(points: RDD[(Long,Point)], iteration_index: Int = 0): RDD[(Long,Point)] = {
+  def compute(points: RDD[DatasetPoint]/*, iteration_index: Int = 0*/): RDD[StayPoint] = {
     /*
      * Questo zipWithIndex() è overkill perché ogni volta deve scorrere l'RDD e rivoltarlo come un calzino.
      * Dopodiché c'è uno split in sqrt(|trajectory|) forse eccessivo.
      * Necessario mettere un cap alle iterazioni?
      */
     //val totalPartitions = pow(points.count(), 0.25).toInt
-    val partitioner = new RangePartitioner(Config.DEFAULT_PARTITIONS_NUMBER, points)
-    val trajectoryRanged = points.partitionBy(partitioner)
+    val keyedPoints = points.map(t => (t.timestamp.toInstant.getMillis, t))
+    val partitioner = new RangePartitioner(Config.DEFAULT_PARTITIONS_NUMBER, keyedPoints)
+    val trajectoryRanged = keyedPoints.partitionBy(partitioner)
 
     val stayPoints = trajectoryRanged.mapPartitions(partition => {
-      computeStayPoints(partition.toSeq).iterator
+      computeStayPoints(partition.toSeq.map(_._2)).iterator
     })
-    if(points.count() - stayPoints.count() >= Config.CARDINALITY_DELTA /*&& iteration_index < Config.MAX_ITERATIONS*/) {
-      compute(stayPoints/*, iteration_index + 1*/)
-    } else {
-      stayPoints.filter(p => p._2.isInstanceOf[StayPoint])
-    }
+    stayPoints
+//    if(points.count() - stayPoints.count() >= Config.CARDINALITY_DELTA /*&& iteration_index < Config.MAX_ITERATIONS*/) {
+//      compute(stayPoints/*, iteration_index + 1*/)
+//    } else {
+//      stayPoints.filter(p => p._2.isInstanceOf[StayPoint])
+//    }
   }
 
-  def computeStayPoints(partition: Seq[(Long,Point)]): Seq[(Long,Point)] = {
-    val points = new ListBuffer[(Long,Point)] // [SP, SP, P, SP, P, P, P, SP]
+  def computeStayPoints(partition: Seq[DatasetPoint]): Seq[StayPoint] = {
+    val points = new ListBuffer[StayPoint] // [SP, SP, P, SP, P, P, P, SP]
 
     var i = 0
     while (i < partition.size) {
-      val ith_element = partition(i)._2
-      val newStayPointIndex = partition(i)._1
+      val ith_element = partition(i)
 
       var j = i + 1
       var inside = true
       while (j < partition.size && inside) {
-        val jth_element = partition(j)._2
+        val jth_element = partition(j)
         // DISTANCE CHECK
-        val latitudesLongitudes = (ith_element, jth_element) match {
-          case (dp1: DatasetPoint, dp2: DatasetPoint) => (dp1.latitude, dp1.longitude, dp2.latitude, dp2.longitude)
-          case (sp: StayPoint, dp: DatasetPoint) => (sp.firstPoint.latitude, sp.firstPoint.longitude, dp.latitude, dp.longitude)
-          case (dp: DatasetPoint, sp: StayPoint) => (dp.latitude, dp.longitude, sp.lastPoint.latitude, sp.lastPoint.longitude)
-          case (sp1: StayPoint, sp2: StayPoint) => (sp1.firstPoint.latitude, sp1.firstPoint.longitude, sp2.lastPoint.latitude, sp2.lastPoint.longitude)
-        }
         val distance = Haversine.haversine(
-          lat1 = latitudesLongitudes._1,
-          lon1 = latitudesLongitudes._2,
-          lat2 = latitudesLongitudes._3,
-          lon2 = latitudesLongitudes._4
+          lat1 = ith_element.latitude,
+          lon1 = ith_element.longitude,
+          lat2 = jth_element.latitude,
+          lon2 = jth_element.longitude
         )
         inside = distance <= Config.DISTANCE_THRESHOLD
         j += 1
@@ -69,28 +63,20 @@ package object clar {
       // TIME CHECK
       val currentPoints = partition.slice(i, j)
 
-      val times = (ith_element, currentPoints.last._2) match {
-        case (dp1: DatasetPoint, dp2: DatasetPoint) => (dp1.timestamp, dp2.timestamp)
-        case (sp: StayPoint, dp: DatasetPoint) => (sp.firstPoint.timestamp, dp.timestamp)
-        case (dp: DatasetPoint, sp: StayPoint) => (dp.timestamp, sp.lastPoint.timestamp)
-        case (sp1: StayPoint, sp2: StayPoint) => (sp1.firstPoint.timestamp, sp2.lastPoint.timestamp)
-      }
-      val timeDelta = Seconds.secondsBetween(times._1, times._2).getSeconds
+      val timeDelta = Seconds.secondsBetween(ith_element.timestamp, ith_element.timestamp).getSeconds
 
       if (timeDelta >= Config.TIME_THRESHOLD) {
-        val mappedPoints=currentPoints.map(_._2)
-        val totalPoints = mappedPoints.map(_.cardinality).sum
-        points +=((newStayPointIndex, StayPoint(
-          latitude=mappedPoints.map(p => p.latitude * p.cardinality).sum / totalPoints,
-          longitude=mappedPoints.map(p => p.longitude * p.cardinality).sum / totalPoints,
-          firstPoint=ith_element,
-          lastPoint=mappedPoints.last,
-          contributingPoints=totalPoints,
-        )))
+        val totalPoints = j - i
+        points += StayPoint(
+          latitude=currentPoints.map(_.latitude).sum / totalPoints,
+          longitude=currentPoints.map(_.longitude).sum / totalPoints,
+          timeOfArrival = ith_element.timestamp,
+          timeOfLeave = currentPoints.last.timestamp
+        )
       }
-      else {
-        points ++= currentPoints
-      }
+//      else {
+//        points ++= currentPoints
+//      }
 
       i = j
     }

@@ -1,7 +1,10 @@
 package it.unibo.clar
 
+import com.github.nscala_time.time.Imports.DateTime
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
+
+import scala.collection.mutable.ListBuffer
 
 
 object Main extends App {
@@ -11,11 +14,13 @@ object Main extends App {
   val sparkSession = SparkSession.builder
     .master("local[*]") // local[*] Run Spark locally with as many worker threads as logical cores on your machine
     .appName("CollaborativeLocationActivityRecommendations")
+    .config("spark.executor.processTreeMetrics.enabled", value = false)
     .getOrCreate()
     Config.DEFAULT_PARTITIONS_NUMBER = sparkSession.sparkContext.defaultParallelism
   /*
    * Loading the dataset.
    */
+  // val path = "data/geolife_trajectories_complete.csv"
   val path = "data/example.csv"
   val datasetCSV = sparkSession.read
     .option("header", value = true)
@@ -37,19 +42,21 @@ object Main extends App {
    */
   val pointsByUser = datasetRDD.groupByKey()
 
-  pointsByUser.foreach(pair => {
+  val results = new ListBuffer[String]
+
+  time(pointsByUser.foreach(pair => {
     val userId = pair._1
-    val trajectory: RDD[Point] = sparkSession.sparkContext.parallelize(pair._2.toSeq)
+    val trajectory = sparkSession.sparkContext.parallelize(pair._2.toSeq)
 
     /**
      * Verificare il parametro numSlices di parallelize.
      */
-    val zippedTraj = trajectory.zipWithIndex().map { case (point, index) => (index, point) }
-    val stayPoints = compute(zippedTraj).count()
-    // val stayPoints = computeStayPoints(pair._2.toSeq).count(_.isInstanceOf[StayPoint])
+    // val zippedTraj = trajectory.map(t => (t.timestamp.toInstant.getMillis, t))
+    // val stayPoints = compute(zippedTraj).count()
+    val stayPoints = computeStayPoints(pair._2.toSeq).size
 
-    println(s"USER: ${userId} STAY POINTS COMPUTED: ${stayPoints}")
+    results += (s"USER: ${userId} STAY POINTS COMPUTED: ${stayPoints}")
+  }))
 
-    //println(indexKey.map { case (k, v) => s"(${k}, ${v})" }.collect().mkString("Array(", ", ", ")"))
-  })
+  results.foreach(println)
 }

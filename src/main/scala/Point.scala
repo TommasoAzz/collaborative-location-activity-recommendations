@@ -6,8 +6,6 @@ abstract class Point(
                       val latitude: Double,
                       val longitude: Double,
                       val timestamp: DateTime
-                    ) extends Serializable {
-  def cardinality: Int
-}
+                    ) extends Serializable
 
 

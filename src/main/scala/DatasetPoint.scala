@@ -13,6 +13,4 @@ case class DatasetPoint(
     longitude.toDouble,
     TimestampFormatter(timestamp)
   )
-
-  override def cardinality: Int = 1
 }
