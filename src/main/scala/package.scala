@@ -18,15 +18,17 @@ package object clar {
   }
 
   // @tailrec
-  def compute(points: RDD[Point]): RDD[Point] = {
-    println("compute")
-    val trajectory = points.zipWithIndex().map { case (point, index) => (index, point) }
+  def compute(points: RDD[DatasetPoint]): RDD[StayPoint] = {
+    // val trajectory = points.zipWithIndex().map { case (point, index) => (index, point) }
+    val trajectory = points.map(t => (t.timestamp.toInstant.getMillis, t))
     val partitionSize = sqrt(trajectory.count()).toInt
     val partitioner = new RangePartitioner(partitionSize, trajectory)
     val trajectoryRanged = trajectory.partitionBy(partitioner)
 
     val stayPoints = trajectoryRanged.mapPartitions(partition => {
-      computeStayPoints(partition.map(_._2).toSeq).iterator
+      val saved = computeStayPoints(partition.map(_._2).toSeq).iterator
+      println(saved.size)
+      saved
     })
 //    if(points.count() - stayPoints.count() >= Config.LOOP_THRESHOLD) {
 //      compute(stayPoints)
@@ -36,8 +38,8 @@ package object clar {
     stayPoints
   }
 
-  def computeStayPoints(partition: Seq[Point]): Seq[Point] = {
-    val points = new ListBuffer[Point] // [SP, SP, P, SP, P, P, P, SP]
+  def computeStayPoints(partition: Seq[DatasetPoint]): Seq[StayPoint] = {
+    val points = new ListBuffer[StayPoint] // [SP, SP, P, SP, P, P, P, SP]
 
     var i = 0
     while (i < partition.size) {
