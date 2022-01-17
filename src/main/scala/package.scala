@@ -4,9 +4,7 @@ import org.apache.spark.RangePartitioner
 import org.apache.spark.rdd.RDD
 import org.joda.time.Seconds
 
-import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
-import scala.math.sqrt
 
 package object clar {
   def time[R](block: => R): R = {
@@ -17,7 +15,6 @@ package object clar {
     result
   }
 
-  // @tailrec
   def compute(points: RDD[DatasetPoint]): RDD[StayPoint] = {
     // val trajectory = points.zipWithIndex().map { case (point, index) => (index, point) }
     val trajectory = points.map(t => (t.timestamp.toInstant.getMillis, t))
@@ -27,7 +24,6 @@ package object clar {
     val stayPoints = trajectoryRanged.mapPartitions(partition => {
       computeStayPoints(partition.map(_._2).toSeq).iterator
     })
-
 
     stayPoints
   }
@@ -56,7 +52,6 @@ package object clar {
       // TIME CHECK
       val currentPoints = partition.slice(i, j)
 
-
       val timeDelta = Seconds.secondsBetween(ith_element.timestamp, currentPoints.last.timestamp).getSeconds
 
       if (timeDelta >= Config.TIME_THRESHOLD) {
@@ -64,7 +59,6 @@ package object clar {
         points += StayPoint(
           latitude = currentPoints.map(_.latitude).sum / totalPoints,
           longitude = currentPoints.map(_.longitude).sum / totalPoints,
-
           timeOfArrival = ith_element.timestamp,
           timeOfLeave = currentPoints.last.timestamp
         )
@@ -75,8 +69,4 @@ package object clar {
 
     points.toSeq
   }
-
-
-
-
 }
