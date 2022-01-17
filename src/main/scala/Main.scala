@@ -1,19 +1,15 @@
 package it.unibo.clar
 
 import org.apache.spark.RangePartitioner
-import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
 object Main extends App {
   /*
-   * Loading Spark.
+   * Loading Spark and Hadoop.
    */
-  val sparkSession = SparkSession.builder
-    .master("local[*]") // local[*] Run Spark locally with as many worker threads as logical cores on your machine
-    .appName("CollaborativeLocationActivityRecommendations")
-    .getOrCreate()
-  sparkSession.sparkContext.setLogLevel("WARN")
-  Config.DEFAULT_PARALLELISM = sparkSession.sparkContext.defaultParallelism
+  val sparkSession = Config.sparkSession
+  val sparkContext = sparkSession.sparkContext
+  Config.loadHadoop()
 
   /*
    * Loading the dataset.
