@@ -40,7 +40,7 @@ package object clar {
       while (j < partition.size && inside) {
         val jth_element = partition(j)
 
-        val distance = Haversine.haversine(
+        val distance = Haversine(
           lat1 = ith_element.latitude,
           lon1 = ith_element.longitude,
           lat2 = jth_element.latitude,
