@@ -2,7 +2,7 @@ import sbt.Keys.libraryDependencies
 
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
-ThisBuild / scalaVersion := "2.13.7"
+ThisBuild / scalaVersion := "2.12.15"
 
 lazy val root = (project in file("."))
   .settings(
@@ -14,11 +14,13 @@ lazy val root = (project in file("."))
       "org.apache.spark" %% "spark-sql" % "3.2.0",
       "com.github.nscala-time" %% "nscala-time" % "2.30.0"
     ),
+    Compile / resourceDirectory := baseDirectory.value / "data",
+    Compile / unmanagedResources / includeFilter := "example.csv" | "user0.csv",
     Compile / mainClass := Some("it.unibo.clar.Main"),
     assembly / mainClass := Some("it.unibo.clar.Main"),
     assembly / assemblyJarName := "clar.jar",
-     assembly / assemblyMergeStrategy := {
-      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", xs@_*) => MergeStrategy.discard
       case x => MergeStrategy.first
     }
   )

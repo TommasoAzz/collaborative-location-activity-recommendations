@@ -7,15 +7,19 @@ object Main extends App {
   /*
    * Loading Spark and Hadoop.
    */
-  val sparkSession = Config.sparkSession
+  val sparkSession = Config.sparkSession("local[*]")
   val sparkContext = sparkSession.sparkContext
   Config.loadHadoop()
+
+  if(args.length != 2) {
+    println("Missing arguments")
+    throw new MissingConfigurationException
+  }
 
   /*
    * Loading the dataset.
    */
-  val path = "data/example.csv"
-  //val path = "data/geolife_trajectories_complete.csv"
+  val path = args(1)
   val datasetCSV = sparkSession.read
     .option("header", value = true)
     .option("timestampFormat", TimestampFormatter.timestampPattern)

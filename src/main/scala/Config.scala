@@ -9,15 +9,15 @@ object Config {
   val LOOP_THRESHOLD = 60 // number of points
   var DEFAULT_PARALLELISM = 1 // number of partitions
 
-  private def _sparkSession: SparkSession = {
+  private def _sparkSession(master: String): SparkSession = {
     SparkSession.builder
-      .master("local[*]") // local[*] Run Spark locally with as many worker threads as logical cores on your machine
+      .master(master) // local[*] Run Spark locally with as many worker threads as logical cores on your machine
       .appName("CollaborativeLocationActivityRecommendations")
       .getOrCreate()
   }
 
-  def sparkSession: SparkSession = {
-    val session = _sparkSession
+  def sparkSession(master: String): SparkSession = {
+    val session = _sparkSession(master)
 
     DEFAULT_PARALLELISM = session.sparkContext.defaultParallelism
     session.sparkContext.setLogLevel("WARN")
@@ -26,7 +26,7 @@ object Config {
   }
 
   def loadHadoop(): Unit = {
-    val hadoopConfig: Configuration = _sparkSession.sparkContext.hadoopConfiguration
+    val hadoopConfig: Configuration = SparkSession.builder.getOrCreate().sparkContext.hadoopConfiguration
 
     hadoopConfig.set("fs.hdfs.impl", classOf[org.apache.hadoop.hdfs.DistributedFileSystem].getName)
 
