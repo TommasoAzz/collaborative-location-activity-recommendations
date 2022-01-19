@@ -10,10 +10,13 @@ object Config {
   var DEFAULT_PARALLELISM = 1 // number of partitions
 
   private def _sparkSession(master: String): SparkSession = {
-    SparkSession.builder
-      .master(master) // local[*] Run Spark locally with as many worker threads as logical cores on your machine
-      .appName("CollaborativeLocationActivityRecommendations")
-      .getOrCreate()
+    var builder = SparkSession.builder.appName("CollaborativeLocationActivityRecommendations")
+
+    if(master != "default") {
+      builder = builder.master(master)
+    }
+
+    builder.getOrCreate()
   }
 
   def sparkSession(master: String): SparkSession = {
