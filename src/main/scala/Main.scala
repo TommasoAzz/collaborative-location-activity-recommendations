@@ -1,31 +1,34 @@
 package it.unibo.clar
 
-import com.github.nscala_time.time.Imports.DateTime
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
-
-import scala.collection.mutable.ListBuffer
-
+import org.apache.spark.RangePartitioner
+import org.apache.spark.storage.StorageLevel
 
 object Main extends App {
   /*
-   * Loading Spark.
+   * Checking arguments.
    */
-  val sparkSession = SparkSession.builder
-    .master("local[*]") // local[*] Run Spark locally with as many worker threads as logical cores on your machine
-    .appName("CollaborativeLocationActivityRecommendations")
-    .config("spark.executor.processTreeMetrics.enabled", value = false)
-    .getOrCreate()
-    Config.DEFAULT_PARTITIONS_NUMBER = sparkSession.sparkContext.defaultParallelism
+  if(args.length != 3) {
+    println("Missing arguments")
+    throw new MissingConfigurationException
+  }
+  val master = args(0)
+  val datasetPath = args(1)
+  val outputFolder = args(2)
+
+  /*
+   * Loading Spark and Hadoop.
+   */
+  val sparkSession = Config.sparkSession(args(0))
+  val sparkContext = sparkSession.sparkContext
+  //Config.loadHadoop()
+
   /*
    * Loading the dataset.
    */
-  // val path = "data/geolife_trajectories_complete.csv"
-  val path = "data/example.csv"
   val datasetCSV = sparkSession.read
     .option("header", value = true)
     .option("timestampFormat", TimestampFormatter.timestampPattern)
-    .csv(path)
+    .csv(datasetPath)
     .drop("label")
 
   /*
@@ -35,28 +38,42 @@ object Main extends App {
     latitude = row(1).toString,
     longitude = row(2).toString,
     timestamp = row(0).toString
-  ))).cache()
+  )))
+
+  val partitioner = new RangePartitioner(Config.DEFAULT_PARALLELISM, datasetRDD)
+  val datasetRanged = datasetRDD.partitionBy(partitioner)
 
   /*
    * Algorithm implementation.
    */
-  val pointsByUser = datasetRDD.groupByKey()
+  val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
 
-  val results = new ListBuffer[String]
+//  val allStayPoints = pointsByUser.collectAsMap().map(pair => {
+//    val userId = pair._1
+//
+//    val trajectory = sparkContext.parallelize(pair._2.toSeq)
+//    val stayPoints = compute(trajectory)
+//
+//    //stayPoints.saveAsTextFile(s"$outputFolder/$userId/")
+//    println(s"USER: $userId STAY POINTS COMPUTED: ${stayPoints.count()}")
+//
+//    stayPoints
+//  }).reduce((sp1, sp2) => sp1 ++ sp2)
 
-  time(pointsByUser.foreach(pair => {
+  val allStayPointsSeq = pointsByUser.map(pair => {
     val userId = pair._1
-    val trajectory = sparkSession.sparkContext.parallelize(pair._2.toSeq)
 
-    /**
-     * Verificare il parametro numSlices di parallelize.
-     */
-    // val zippedTraj = trajectory.map(t => (t.timestamp.toInstant.getMillis, t))
-    // val stayPoints = compute(zippedTraj).count()
-    val stayPoints = computeStayPoints(pair._2.toSeq).size
+    val stayPoints = computeStayPoints(pair._2.toSeq)
 
-    results += (s"USER: ${userId} STAY POINTS COMPUTED: ${stayPoints}")
-  }))
+    println(s"USER: $userId STAY POINTS COMPUTED: ${stayPoints.size}")
 
-  results.foreach(println)
+    stayPoints
+  }).reduce((sp1, sp2) => sp1 ++ sp2)
+  val allStayPoints = sparkContext.parallelize(allStayPointsSeq)
+
+  allStayPoints.map(sp => (computeGridPosition(sp.longitude, sp.latitude), sp))
+    .groupByKey()
+    .foreach(pair => println(s"CELL INDEX: ${pair._1} HAS ${pair._2.size} POINTS"))
+
+  sparkSession.stop()
 }

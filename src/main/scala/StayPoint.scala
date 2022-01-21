@@ -8,5 +8,5 @@ case class StayPoint(
                       timeOfArrival: DateTime,
                       timeOfLeave: DateTime
                     )
-  extends Point(latitude, longitude, timeOfArrival) {
+  extends Point(latitude, longitude, timeOfLeave) {
 }

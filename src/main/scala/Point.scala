@@ -7,5 +7,3 @@ abstract class Point(
                       val longitude: Double,
                       val timestamp: DateTime
                     ) extends Serializable
-
-
