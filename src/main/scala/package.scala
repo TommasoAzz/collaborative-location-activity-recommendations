@@ -69,4 +69,24 @@ package object clar {
 
     points.toSeq
   }
+
+  def computeGridPosition(longitude: Double, latitude: Double): (Int, Int) = {
+    /*
+     * World coordinates:
+     * ((90.0, 180.0), (90.0, -180.0), (-90.0, -180.0), (-90.0, 180.0)) // NE, NW, SW, SE
+    */
+
+    // longitude = x
+    // latitude = y
+    // Given origin, to compute the grid cell in a matrix ranging from (0, 0) (bottom left)
+    // to (90.0 / Config.GRID_CELL_SIDE_LENGTH, 180.0 / Config.GRID_CELL_SIDE_LENGTH)
+    // (assuming Config.GRID_CELL_SIDE_LENGTH is in degrees, which is not) the formula
+    // to comp
+    val longitude_step = Config.GRID_CELL_SIDE_LENGTH / (111111 * math.cos(math.toRadians(latitude)))
+    val latitude_step = Config.GRID_CELL_SIDE_LENGTH / 111111
+    val cellX = math.floor((longitude - Config.WORLD_BOTTOM_LEFT_LONGITUDE) / longitude_step).toInt
+    val cellY = math.floor((latitude - Config.WORLD_BOTTOM_LEFT_LATITUDE) / latitude_step).toInt
+
+    (cellX, cellY)
+  }
 }

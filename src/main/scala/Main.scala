@@ -48,25 +48,32 @@ object Main extends App {
    */
   val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
 
-  val pointsByUserRDDs = pointsByUser.map(pair => (pair._1, sparkContext.parallelize(pair._2.toSeq)))
+//  val allStayPoints = pointsByUser.collectAsMap().map(pair => {
+//    val userId = pair._1
+//
+//    val trajectory = sparkContext.parallelize(pair._2.toSeq)
+//    val stayPoints = compute(trajectory)
+//
+//    //stayPoints.saveAsTextFile(s"$outputFolder/$userId/")
+//    println(s"USER: $userId STAY POINTS COMPUTED: ${stayPoints.count()}")
+//
+//    stayPoints
+//  }).reduce((sp1, sp2) => sp1 ++ sp2)
 
-  pointsByUserRDDs.foreach(pair => {
+  val allStayPointsSeq = pointsByUser.map(pair => {
     val userId = pair._1
-    val trajectory = pair._2
-    val stayPoints = compute(trajectory)
-    stayPoints.saveAsTextFile(s"$outputFolder/$userId/")
-    println(s"USER: $userId STAY POINTS COMPUTED: ${stayPoints.count()}")
-  })
 
-  /*pointsByUser.foreach(pair => {
-    val userId = pair._1
-    val trajectory = sparkContext.parallelize(pair._2.toSeq)
+    val stayPoints = computeStayPoints(pair._2.toSeq)
 
-    //val stayPoints = compute(trajectory).count()
-    val stayPoints = computeStayPoints(pair._2.toSeq).size
+    println(s"USER: $userId STAY POINTS COMPUTED: ${stayPoints.size}")
 
-    println(s"USER: $userId STAY POINTS COMPUTED: $stayPoints")
-  })*/
+    stayPoints
+  }).reduce((sp1, sp2) => sp1 ++ sp2)
+  val allStayPoints = sparkContext.parallelize(allStayPointsSeq)
+
+  allStayPoints.map(sp => (computeGridPosition(sp.longitude, sp.latitude), sp))
+    .groupByKey()
+    .foreach(pair => println(s"CELL INDEX: ${pair._1} HAS ${pair._2.size} POINTS"))
 
   sparkSession.stop()
 }
