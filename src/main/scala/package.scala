@@ -16,7 +16,6 @@ package object clar {
   }
 
   def compute(points: RDD[DatasetPoint]): RDD[StayPoint] = {
-    // val trajectory = points.zipWithIndex().map { case (point, index) => (index, point) }
     val trajectory = points.map(t => (t.timestamp.toInstant.getMillis, t))
     val partitioner = new RangePartitioner(Config.DEFAULT_PARALLELISM, trajectory)
     val trajectoryRanged = trajectory.partitionBy(partitioner)
@@ -67,7 +66,7 @@ package object clar {
       i = j
     }
 
-    points.toSeq
+    points
   }
 
   def computeGridPosition(longitude: Double, latitude: Double): (Int, Int) = {
