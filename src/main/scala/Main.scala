@@ -71,9 +71,11 @@ object Main extends App {
   }).reduce((sp1, sp2) => sp1 ++ sp2)
   val allStayPoints = sparkContext.parallelize(allStayPointsSeq)
 
-  allStayPoints.map(sp => (computeGridPosition(sp.longitude, sp.latitude), sp))
+  val gridCells = allStayPoints.map(sp => (computeGridPosition(sp.longitude, sp.latitude), sp))
     .groupByKey()
-    .foreach(pair => println(s"CELL INDEX: ${pair._1} HAS ${pair._2.size} POINTS"))
+
+  gridCells.foreach(pair => println(s"CELL INDEX: ${pair._1} HAS ${pair._2.size} POINTS"))
+  println(s"Total grid cells computed ${gridCells.count()}")
 
   sparkSession.stop()
 }
