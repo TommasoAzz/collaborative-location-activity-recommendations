@@ -81,11 +81,38 @@ package object clar {
     // to (90.0 / Config.GRID_CELL_SIDE_LENGTH, 180.0 / Config.GRID_CELL_SIDE_LENGTH)
     // (assuming Config.GRID_CELL_SIDE_LENGTH is in degrees, which is not) the formula
     // to comp
+    /* Would be perfect but not compatible with computeStayRegion
     val longitude_step = Config.GRID_CELL_SIDE_LENGTH / (111111 * math.cos(math.toRadians(latitude)))
     val latitude_step = Config.GRID_CELL_SIDE_LENGTH / 111111
-    val cellX = math.floor((longitude - Config.WORLD_BOTTOM_LEFT_LONGITUDE) / longitude_step).toInt
-    val cellY = math.floor((latitude - Config.WORLD_BOTTOM_LEFT_LATITUDE) / latitude_step).toInt
+     */
+    val cellX = math.floor((longitude - Config.WORLD_BOTTOM_LEFT_LONGITUDE) / Config.STEP).toInt
+    val cellY = math.floor((latitude - Config.WORLD_BOTTOM_LEFT_LATITUDE) / Config.STEP).toInt
 
     (cellX, cellY)
+  }
+
+  def computeStayRegion(index: Int, gridCells: Seq[GridCell]): StayRegion = {
+    val gridCell = gridCells(index)
+    val posLat = gridCell.position._2
+    val posLong = gridCell.position._1
+    val neighbours = gridCells.filter(gridCell => {
+      val nLat = gridCell.position._2
+      val nLong = gridCell.position._1
+      val conditionLong = ((posLong-1) % Config.NUM_CELLS_LONGITUDE) == nLong ||
+        (posLong % Config.NUM_CELLS_LONGITUDE) == nLong ||
+        ((posLong+1) % Config.NUM_CELLS_LONGITUDE) == nLong
+      val conditionLat = ((posLat-1) % Config.NUM_CELLS_LATITUDE) == nLat ||
+        (posLat % Config.NUM_CELLS_LATITUDE) == nLat ||
+        ((posLat+1) % Config.NUM_CELLS_LATITUDE) == nLat
+
+      gridCell.assigned = conditionLong && conditionLat
+      conditionLong && conditionLat
+    })
+
+    val neighbouringStayPoints = neighbours.flatMap(_.stayPoints)
+
+    neighbouringStayPoints.foreach(nsp => {println(nsp.longitude)})
+
+    new StayRegion(stayPoints = neighbouringStayPoints)
   }
 }
