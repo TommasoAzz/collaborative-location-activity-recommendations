@@ -73,6 +73,7 @@ object Main extends App {
   }).reduce((sp1, sp2) => sp1 ++ sp2)
   val allStayPoints = sparkContext.parallelize(allStayPointsSeq)
 
+
   val gridCells = allStayPoints
     .map(sp => (computeGridPosition(sp.longitude, sp.latitude), sp))
     .groupByKey()
@@ -88,14 +89,16 @@ object Main extends App {
     } yield computeStayRegion(i, sortedCells)
 
     stayRegions.iterator
-  }).collect()
+  })//.collect()
+
+
+
 
   stayRegions.foreach(sr => {
     println("SR ->\n\tlatitude: " + sr.latitude + "\n\tlongitude: " + sr.longitude)
   })
 
-  /*  gridCells.foreach(pair => println(s"CELL INDEX: ${pair._1} HAS ${pair._2.size} POINTS"))
-    println(s"Total grid cells computed ${gridCells.count()}")*/
+
 
   sparkSession.stop()
 }

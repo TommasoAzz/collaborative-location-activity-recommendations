@@ -70,24 +70,12 @@ package object clar {
   }
 
   def computeGridPosition(longitude: Double, latitude: Double): (Int, Int) = {
-    /*
-     * World coordinates:
-     * ((90.0, 180.0), (90.0, -180.0), (-90.0, -180.0), (-90.0, 180.0)) // NE, NW, SW, SE
-    */
 
-    // longitude = x
-    // latitude = y
-    // Given origin, to compute the grid cell in a matrix ranging from (0, 0) (bottom left)
-    // to (90.0 / Config.GRID_CELL_SIDE_LENGTH, 180.0 / Config.GRID_CELL_SIDE_LENGTH)
-    // (assuming Config.GRID_CELL_SIDE_LENGTH is in degrees, which is not) the formula
-    // to comp
-    /* Would be perfect but not compatible with computeStayRegion
-    val longitude_step = Config.GRID_CELL_SIDE_LENGTH / (111111 * math.cos(math.toRadians(latitude)))
-    val latitude_step = Config.GRID_CELL_SIDE_LENGTH / 111111
-     */
-    val cellX = math.floor((longitude - Config.WORLD_BOTTOM_LEFT_LONGITUDE) / Config.STEP).toInt
-    val cellY = math.floor((latitude - Config.WORLD_BOTTOM_LEFT_LATITUDE) / Config.STEP).toInt
+    val shiftedLong = longitude+180
+    val shiftedLat = math.abs(latitude-90)
 
+    val cellX = math.floor((shiftedLong) / Config.STEP).toInt
+    val cellY = math.floor((shiftedLat) / Config.STEP).toInt
     (cellX, cellY)
   }
 
@@ -111,7 +99,6 @@ package object clar {
 
     val neighbouringStayPoints = neighbours.flatMap(_.stayPoints)
 
-    neighbouringStayPoints.foreach(nsp => {println(nsp.longitude)})
 
     new StayRegion(stayPoints = neighbouringStayPoints)
   }
