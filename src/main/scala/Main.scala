@@ -92,12 +92,28 @@ object Main extends App {
   })//.collect()
 
 
-
-
+/*
   stayRegions.foreach(sr => {
     println("SR ->\n\tlatitude: " + sr.latitude + "\n\tlongitude: " + sr.longitude)
   })
+*/
+  println("Number of stay regions: " + stayRegions.count())
 
+  sparkSession.createDataFrame(stayRegions.map(sr => (sr.longitude, sr.latitude)))
+    .toDF("longitude", "latitude")
+    .coalesce(1)
+    .write
+    .option("header", value = true)
+    .mode("overwrite")
+    .csv(outputFolder+"/stayRegions")
+
+  sparkSession.createDataFrame(allStayPoints.map(sp => (sp.longitude, sp.latitude, sp.timeOfArrival.toString(TimestampFormatter.formatter), sp.timeOfLeave.toString(TimestampFormatter.formatter))))
+    .toDF("longitude", "latitude", "timeOfArrival", "timeOfLeave")
+    .coalesce(1)
+    .write
+    .option("header", value = true)
+    .mode("overwrite")
+    .csv(outputFolder+"/stayPoints")
 
 
   sparkSession.stop()
