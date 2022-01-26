@@ -3,11 +3,17 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import pandas as pd
 import shapefile as shp
+import os
 
 # Input file
-INPUT_FILE_STAYPOINTS: str = 'data/stayPoints/part-00000-79557233-ac4a-4614-a0df-a38a195def1b-c000.csv'
+for file in os.listdir("data/stayPoints"):
+    if os.path.splitext(file)[1] == ".csv":
+        INPUT_FILE_STAYPOINTS = f"data/stayPoints/{file}"
 
-INPUT_FILE_STAYREGIONS = "data/stayRegions/part-00000-91820f99-df2f-4cd7-a730-3a18a08a130e-c000.csv"
+
+for file in os.listdir("data/stayRegions"):
+    if os.path.splitext(file)[1] == ".csv":
+        INPUT_FILE_STAYREGIONS = f"data/stayRegions/{file}"
 
 # Map file name (both .shp and .dbf)
 MAP_FILE_NAME: str = "data/maps/land_limits"
