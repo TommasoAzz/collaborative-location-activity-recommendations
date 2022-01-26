@@ -1,0 +1,33 @@
+\documentclass[11pt]{report}
+
+
+\usepackage{configuration/style}
+
+\title{Alma Mater Studiorum - Università di Bologna \\ LM Informatica \\ \textbf{Scalable and Cloud Programming}}
+\author{Marco Ferrati, Tommaso Azzalin, Andrea Gurioli}
+\date{A.A. 2021/2022}
+
+\begin{document}
+
+\maketitle
+
+\subfile{chapters/abstract}
+
+\clearpage
+
+{
+    \setcounter{tocdepth}{2}
+    \tableofcontents
+}
+
+\subfile{chapters/introduzione}
+
+
+%Appendice
+\cleardoublepage
+\appendix
+\subfile{chapters/appendix}
+
+\subfile{chapters/riferimenti}
+
+\end{document}
