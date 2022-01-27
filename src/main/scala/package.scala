@@ -79,7 +79,7 @@ package object clar {
     (cellX, cellY)
   }
 
-  def computeStayRegion(index: Int, gridCells: Seq[GridCell]): StayRegion = {
+  def computeStayRegion(index: Int, gridCells: Seq[GridCell]): (StayRegion, Double, Int) = {
     val gridCell = gridCells(index)
     val posLat = gridCell.position._2
     val posLong = gridCell.position._1
@@ -97,9 +97,10 @@ package object clar {
       conditionLong && conditionLat
     })
 
+    val neighbourRatio = neighbours.size / 9.0
+
     val neighbouringStayPoints = neighbours.flatMap(_.stayPoints)
 
-
-    new StayRegion(stayPoints = neighbouringStayPoints)
+    (new StayRegion(stayPoints = neighbouringStayPoints), neighbourRatio, neighbouringStayPoints.size)
   }
 }

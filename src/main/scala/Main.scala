@@ -4,6 +4,7 @@ import org.apache.spark.RangePartitioner
 import org.apache.spark.storage.StorageLevel
 
 import scala.collection.immutable.SortedMap
+import scala.collection.mutable.ListBuffer
 
 object Main extends App {
   /*
@@ -62,15 +63,10 @@ object Main extends App {
   //    stayPoints
   //  }).reduce((sp1, sp2) => sp1 ++ sp2)
 
-  val allStayPointsSeq = pointsByUser.map(pair => {
-    val userId = pair._1
-
-    val stayPoints = computeStayPoints(pair._2.toSeq)
-
-    println(s"USER: $userId STAY POINTS COMPUTED: ${stayPoints.size}")
-
-    stayPoints
-  }).reduce((sp1, sp2) => sp1 ++ sp2)
+  val allStayPointsSeq = pointsByUser
+    .map(pair => computeStayPoints(pair._2.toSeq))
+    .reduce((sp1, sp2) => sp1 ++ sp2)
+  println("Number of stay points: " + allStayPointsSeq.size)
   val allStayPoints = sparkContext.parallelize(allStayPointsSeq)
 
 
@@ -79,25 +75,43 @@ object Main extends App {
     .groupByKey()
     .map(gridCell => new GridCell(gridCell._1, gridCell._2))
 
-  val stayRegions = gridCells.mapPartitions(gridCells => {
-    val sortedCells = gridCells.toSeq
-      .sortBy(pair => pair.stayPoints.size)(ord = Ordering.Int.reverse) //pair.gridCell.stayPoints
 
-    val stayRegions = for {
-      i <- sortedCells.indices
-      if !sortedCells(i).assigned //if not already assigned to a stay region
-    } yield computeStayRegion(i, sortedCells)
+  val listRatios = new ListBuffer[Double]
 
-    stayRegions.iterator
-  })//.collect()
+  val gridCellPartitioner = new GridCellPartitioner(Config.DEFAULT_PARALLELISM)
+  val stayRegions = gridCells.map(gc => (gc.position, gc)).partitionBy(gridCellPartitioner)
+    .mapPartitions(pairs => {
+      val gridCells = pairs.map(_._2)
+      val sortedCells = gridCells.toSeq
+        .sortBy(pair => pair.stayPoints.size)(ord = Ordering.Int.reverse) //pair.gridCell.stayPoints
 
+      if (sortedCells.isEmpty) {
+        Iterator()
+      }
 
-/*
-  stayRegions.foreach(sr => {
-    println("SR ->\n\tlatitude: " + sr.latitude + "\n\tlongitude: " + sr.longitude)
-  })
-*/
+      val stayRegionsAndRatios = for {
+        i <- sortedCells.indices
+        if !sortedCells(i).assigned //if not already assigned to a stay region
+      } yield computeStayRegion(i, sortedCells)
+      val stayRegionsAndRatiosWithoutOutliers = stayRegionsAndRatios.filter(_._3 >= Config.MIN_NUM_STAY_POINTS_PER_REGION)
+      listRatios ++= stayRegionsAndRatiosWithoutOutliers.map(_._2)
+      stayRegionsAndRatiosWithoutOutliers.map(_._1).iterator
+    })
+
+  /*    val stayRegions = gridCells.mapPartitions(gridCells => {
+        val sortedCells = gridCells.toSeq
+          .sortBy(pair => pair.stayPoints.size)(ord = Ordering.Int.reverse) //pair.gridCell.stayPoints
+
+        val stayRegionsAndRatios = for {
+          i <- sortedCells.indices
+          if !sortedCells(i).assigned //if not already assigned to a stay region
+        } yield computeStayRegion(i, sortedCells)
+        listRatios ++= stayRegionsAndRatios.map(_._2)
+        stayRegionsAndRatios.map(_._1).iterator
+      })*/
+
   println("Number of stay regions: " + stayRegions.count())
+  println("Mean neighbour ratio: " + listRatios.sum / listRatios.size)
 
   sparkSession.createDataFrame(stayRegions.map(sr => (sr.longitude, sr.latitude)))
     .toDF("longitude", "latitude")
@@ -105,7 +119,7 @@ object Main extends App {
     .write
     .option("header", value = true)
     .mode("overwrite")
-    .csv(outputFolder+"/stayRegions")
+    .csv(outputFolder + "/stayRegions")
 
   sparkSession.createDataFrame(allStayPoints.map(sp => (sp.longitude, sp.latitude, sp.timeOfArrival.toString(TimestampFormatter.formatter), sp.timeOfLeave.toString(TimestampFormatter.formatter))))
     .toDF("longitude", "latitude", "timeOfArrival", "timeOfLeave")
@@ -113,7 +127,7 @@ object Main extends App {
     .write
     .option("header", value = true)
     .mode("overwrite")
-    .csv(outputFolder+"/stayPoints")
+    .csv(outputFolder + "/stayPoints")
 
 
   sparkSession.stop()
