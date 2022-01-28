@@ -6,11 +6,9 @@ import exception.MissingConfigurationException
 import model.{DatasetPoint, GridCell}
 import utils.TimestampFormatter
 
-import it.unibo.clar.algorithm.staypoints.Executions
+import algorithm.staypoints.Executions
 import org.apache.spark.RangePartitioner
 import org.apache.spark.storage.StorageLevel
-
-import scala.collection.mutable.ListBuffer
 
 object Main extends App {
   /*

@@ -4,7 +4,7 @@ package algorithm
 import model.{DatasetPoint, StayPoint}
 import config.{AlgorithmConfig, SparkProjectConfig}
 
-import it.unibo.clar.algorithm.staypoints.Executions.Execution
+import algorithm.staypoints.Executions.Execution
 import org.apache.spark.{RangePartitioner, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.joda.time.Seconds
