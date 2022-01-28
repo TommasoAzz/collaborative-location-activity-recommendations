@@ -1,6 +1,8 @@
 package it.unibo
 
-import org.apache.spark.RangePartitioner
+import it.unibo.clar.model
+import it.unibo.clar.model.{DatasetPoint, GridCell, StayPoint, StayRegion}
+import org.apache.spark.{RangePartitioner, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.joda.time.Seconds
 
@@ -15,16 +17,28 @@ package object clar {
     result
   }
 
+  def computeSequentialPerUser(sparkContext: SparkContext)(datasetPoints: RDD[(Int, Iterable[DatasetPoint])]): RDD[StayPoint] = {
+    val allStayPointsSeq = datasetPoints
+      .map(pair => computeStayPoints(pair._2.toSeq))
+      .reduce((sp1, sp2) => sp1 ++ sp2)
+    sparkContext.parallelize(allStayPointsSeq)
+  }
+
+  def computeParallelPerUser(sparkContext: SparkContext)(datasetPoints: RDD[(Int, Iterable[DatasetPoint])]): RDD[StayPoint] = {
+    datasetPoints.collectAsMap()
+      .map(pair => compute(sparkContext.parallelize(pair._2.toSeq)))
+      .reduce((sp1, sp2) => sp1 ++ sp2)
+  }
+
   def compute(points: RDD[DatasetPoint]): RDD[StayPoint] = {
     val trajectory = points.map(t => (t.timestamp.toInstant.getMillis, t))
     val partitioner = new RangePartitioner(Config.DEFAULT_PARALLELISM, trajectory)
     val trajectoryRanged = trajectory.partitionBy(partitioner)
 
-    val stayPoints = trajectoryRanged.mapPartitions(partition => {
+    // Returning stay points
+    trajectoryRanged.mapPartitions(partition => {
       computeStayPoints(partition.toSeq.map(_._2)).iterator
     })
-
-    stayPoints
   }
 
   def computeStayPoints(partition: Seq[DatasetPoint]): Seq[StayPoint] = {
@@ -55,7 +69,7 @@ package object clar {
 
       if (timeDelta >= Config.TIME_THRESHOLD) {
         val totalPoints = j - i
-        points += StayPoint(
+        points += model.StayPoint(
           latitude = currentPoints.map(_.latitude).sum / totalPoints,
           longitude = currentPoints.map(_.longitude).sum / totalPoints,
           timeOfArrival = ith_element.timestamp,
@@ -70,12 +84,12 @@ package object clar {
   }
 
   def computeGridPosition(longitude: Double, latitude: Double): (Int, Int) = {
-
     val shiftedLong = longitude+180
     val shiftedLat = math.abs(latitude-90)
 
-    val cellX = math.floor((shiftedLong) / Config.STEP).toInt
-    val cellY = math.floor((shiftedLat) / Config.STEP).toInt
+    val cellX = math.floor(shiftedLong / Config.STEP).toInt
+    val cellY = math.floor(shiftedLat / Config.STEP).toInt
+
     (cellX, cellY)
   }
 

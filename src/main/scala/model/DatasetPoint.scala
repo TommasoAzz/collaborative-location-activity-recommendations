@@ -1,4 +1,5 @@
 package it.unibo.clar
+package model
 
 import com.github.nscala_time.time.Imports.DateTime
 

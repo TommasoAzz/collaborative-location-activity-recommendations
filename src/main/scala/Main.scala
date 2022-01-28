@@ -1,5 +1,7 @@
 package it.unibo.clar
 
+import it.unibo.clar.exception.MissingConfigurationException
+import it.unibo.clar.model.{DatasetPoint, GridCell}
 import org.apache.spark.RangePartitioner
 import org.apache.spark.storage.StorageLevel
 
@@ -23,7 +25,6 @@ object Main extends App {
    */
   val sparkSession = Config.sparkSession(args(0))
   val sparkContext = sparkSession.sparkContext
-  //Config.loadHadoop()
 
   /*
    * Loading the dataset.
@@ -35,7 +36,7 @@ object Main extends App {
     .drop("label")
 
   /*
-   * Loading and caching the RDD.
+   * Loading, partitioning and caching the RDD.
    */
   val datasetRDD = datasetCSV.rdd.map(row => (row(4).toString.toInt, new DatasetPoint(
     latitude = row(1).toString,
@@ -49,33 +50,21 @@ object Main extends App {
   /*
    * Algorithm implementation.
    */
+
+  // (1) Split dataset into trajectories for each user
   val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
 
-  //  val allStayPoints = pointsByUser.collectAsMap().map(pair => {
-  //    val userId = pair._1
-  //
-  //    val trajectory = sparkContext.parallelize(pair._2.toSeq)
-  //    val stayPoints = compute(trajectory)
-  //
-  //    //stayPoints.saveAsTextFile(s"$outputFolder/$userId/")
-  //    println(s"USER: $userId STAY POINTS COMPUTED: ${stayPoints.count()}")
-  //
-  //    stayPoints
-  //  }).reduce((sp1, sp2) => sp1 ++ sp2)
+  // (2) Compute the stay points
+  // val allStayPoints = computeParallelPerUser(sparkContext)(pointsByUser)
+  val allStayPoints = computeSequentialPerUser(sparkContext)(pointsByUser)
 
-  val allStayPointsSeq = pointsByUser
-    .map(pair => computeStayPoints(pair._2.toSeq))
-    .reduce((sp1, sp2) => sp1 ++ sp2)
-  println("Number of stay points: " + allStayPointsSeq.size)
-  val allStayPoints = sparkContext.parallelize(allStayPointsSeq)
-
-
+  // (3) Associate the computed stay points to a specific grid cell. The whole grid refers to the entire world.
   val gridCells = allStayPoints
     .map(sp => (computeGridPosition(sp.longitude, sp.latitude), sp))
     .groupByKey()
     .map(gridCell => new GridCell(gridCell._1, gridCell._2))
 
-
+  // (4)
   val listRatios = new ListBuffer[Double]
 
   val gridCellPartitioner = new GridCellPartitioner(Config.DEFAULT_PARALLELISM)
@@ -128,7 +117,6 @@ object Main extends App {
     .option("header", value = true)
     .mode("overwrite")
     .csv(outputFolder + "/stayPoints")
-
 
   sparkSession.stop()
 }
