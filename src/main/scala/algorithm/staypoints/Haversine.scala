@@ -1,4 +1,5 @@
 package it.unibo.clar
+package algorithm.staypoints
 
 object Haversine {
   // Earth radius (WGS84)

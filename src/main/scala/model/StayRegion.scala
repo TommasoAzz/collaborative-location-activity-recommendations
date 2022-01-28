@@ -6,4 +6,9 @@ case class StayRegion(latitude: Double, longitude: Double) extends Serializable 
     latitude = stayPoints.map(_.latitude).sum / stayPoints.size,
     longitude = stayPoints.map(_.longitude).sum / stayPoints.size,
   )
+
+  def toCSVTuple: (Double, Double) = (
+    longitude,
+    latitude
+  )
 }

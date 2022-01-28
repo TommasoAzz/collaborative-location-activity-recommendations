@@ -2,6 +2,7 @@ package it.unibo.clar
 package model
 
 import com.github.nscala_time.time.Imports.DateTime
+import utils.TimestampFormatter
 
 case class DatasetPoint(
                          override val latitude: Double,

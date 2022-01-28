@@ -1,8 +1,8 @@
 package it.unibo.clar
+package utils
 
 import com.github.nscala_time.time.Imports.DateTime
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
-
 
 object TimestampFormatter {
   val timestampPattern = "yyyy-MM-dd HH:mm:ss"
