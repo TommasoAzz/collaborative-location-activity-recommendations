@@ -12,33 +12,36 @@ import scala.collection.mutable.ListBuffer
 
 
 package object stayregions {
-  def computeStayRegions(partioning: Partitioning)(gridCells: RDD[GridCell]): RDD[StayRegion] = {
-    val neighbourRatios = new ListBuffer[Double]
+  def computeStayRegions(gridCells: RDD[GridCell])(partitioning: Partitioning): RDD[StayRegion] = {
+    val neighbourRatios = new ListBuffer[Seq[Double]]
 
-    val results = partioning match {
+    val results = partitioning match {
       case Partitionings.GridCell => gridCells
         .map(gc => (gc.position, gc))
         .partitionBy(new GridCellPartitioner(SparkProjectConfig.DEFAULT_PARALLELISM))
         .mapPartitions(pairs => {
           val result = _computeStayRegions(pairs.map(_._2))
-          neighbourRatios ++= result._2
+          neighbourRatios += result._2
+          println(s"Partition mean neighbour ratio: ${result._2.sum / result._2.size} (${result._2.sum}, ${result._2.size})")
           result._1
         })
       case Partitionings.Hash => gridCells
         .mapPartitions(cells => {
           val result = _computeStayRegions(cells)
-          neighbourRatios ++= result._2
+          neighbourRatios += result._2
           result._1
         })
     }
 
-    println(s"Mean neighbour ratio: ${neighbourRatios.sum / neighbourRatios.size}")
+    val ratios = neighbourRatios.filter(_.nonEmpty).map(ratios => ratios.sum / ratios.size)
+
+    println(s"Mean neighbour ratios: ${ratios}")
 
     results
   }
 
   private def _computeStayRegions(gridCells: Iterator[GridCell]): (Iterator[StayRegion], Seq[Double]) = {
-    val sortedCells = algorithm.gridcells.sortGridCells(gridCells.toSeq)
+    val sortedCells = gridcells.sortGridCells(gridCells.toSeq)
 
     if (sortedCells.isEmpty) {
       (Iterator(), Seq())
@@ -54,28 +57,10 @@ package object stayregions {
 
   private def computeStayRegion(index: Int, gridCells: Seq[GridCell]): (StayRegion, Double, Int) = {
     val reference = gridCells(index)
-    val neighbours = gridCells.filter(isNeighbourGridCell(reference, _))
+    val neighbours = gridCells.filter(gridcells.isNeighbourGridCell(reference, _))
 
     val neighbouringStayPoints = neighbours.flatMap(_.stayPoints)
 
     (new StayRegion(stayPoints = neighbouringStayPoints), neighbours.size / 9.0, neighbouringStayPoints.size)
-  }
-
-  private def isNeighbourGridCell(reference: GridCell, possible: GridCell): Boolean = {
-    val refX = reference.position._1 // X value (i.e. the mapped longitude)
-    val refY = reference.position._2 // Y value (i.e. the mapped latitude)
-
-    val possX = possible.position._1 // X value (i.e. the mapped longitude)
-    val possY = possible.position._2 // Y value (i.e. the mapped latitude)
-
-    val conditionX = ((refX - 1) % AlgorithmConfig.NUM_CELLS_LONGITUDE) == possX ||
-      (refX % AlgorithmConfig.NUM_CELLS_LONGITUDE) == possX ||
-      ((refX + 1) % AlgorithmConfig.NUM_CELLS_LONGITUDE) == possX
-    val conditionY = ((refY - 1) % AlgorithmConfig.NUM_CELLS_LATITUDE) == possY ||
-      (refY % AlgorithmConfig.NUM_CELLS_LATITUDE) == possY ||
-      ((refY + 1) % AlgorithmConfig.NUM_CELLS_LATITUDE) == possY
-
-    possible.assigned = conditionX && conditionY
-    conditionX && conditionY
   }
 }

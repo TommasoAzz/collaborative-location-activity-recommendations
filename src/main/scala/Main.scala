@@ -57,10 +57,12 @@ object Main extends App {
   val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
 
   // (2) Compute the stay points
-  // val allStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(pointsByUser)(Executions.Sequential)
-  val allStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(pointsByUser)(Executions.Parallel)
+  val computeStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(pointsByUser)_ // The underscore means "partial application".
+  // val allStayPoints = computeStayPoints(Executions.Sequential)
+  val allStayPoints = computeStayPoints(Executions.Parallel)
 
   println("Number of stay points: " + allStayPoints.count())
+  allStayPoints.persist(StorageLevel.MEMORY_AND_DISK)
 
   // (3) Associate the computed stay points to a specific grid cell. The whole grid refers to the entire world.
   val gridCells = allStayPoints
@@ -69,12 +71,22 @@ object Main extends App {
     .map(gridCell => new GridCell(gridCell._1, gridCell._2))
 
   // (4) Compute stay regions from the grid cells output of (3)
-  val stayRegions = algorithm.stayregions.computeStayRegions(Partitionings.GridCell)(gridCells)
-  // val stayRegions = algorithm.stayregions.computeStayRegions(Partitionings.Hash)(gridCells)
+  val computeStayRegions = algorithm.stayregions.computeStayRegions(gridCells)_ // The underscore means "partial application".
+  val stayRegions = computeStayRegions(Partitionings.GridCell)
+  // val stayRegions = computeStayRegions(Partitionings.Hash)
 
   println("Number of stay regions: " + stayRegions.count())
+  stayRegions.persist(StorageLevel.MEMORY_AND_DISK)
 
   // (5) Saving the output into CSV files
+  sparkSession.createDataFrame(allStayPoints.map(_.toCSVTuple))
+    .toDF("longitude", "latitude", "timeOfArrival", "timeOfLeave")
+    .coalesce(1)
+    .write
+    .option("header", value = true)
+    .mode("overwrite")
+    .csv(outputFolder + "/stayPoints")
+
   sparkSession.createDataFrame(stayRegions.map(_.toCSVTuple))
     .toDF("longitude", "latitude")
     .coalesce(1)
@@ -83,13 +95,6 @@ object Main extends App {
     .mode("overwrite")
     .csv(outputFolder + "/stayRegions")
 
-  sparkSession.createDataFrame(allStayPoints.map(_.toCSVTuple))
-    .toDF("longitude", "latitude", "timeOfArrival", "timeOfLeave")
-    .coalesce(1)
-    .write
-    .option("header", value = true)
-    .mode("overwrite")
-    .csv(outputFolder + "/stayPoints")
 
   sparkSession.stop()
 }
