@@ -57,7 +57,7 @@ object Main extends App {
   val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
 
   // (2) Compute the stay points
-  val computeStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(pointsByUser)_ // The underscore means "partial application".
+  val computeStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(pointsByUser) _ // The underscore means "partial application".
   // val allStayPoints = computeStayPoints(Executions.Sequential)
   val allStayPoints = computeStayPoints(Executions.Parallel)
 
@@ -71,7 +71,7 @@ object Main extends App {
     .map(gridCell => new GridCell(gridCell._1, gridCell._2))
 
   // (4) Compute stay regions from the grid cells output of (3)
-  val computeStayRegions = algorithm.stayregions.computeStayRegions(gridCells)_ // The underscore means "partial application".
+  val computeStayRegions = algorithm.stayregions.computeStayRegions(gridCells) _ // The underscore means "partial application".
   val stayRegions = computeStayRegions(Partitionings.GridCell)
   // val stayRegions = computeStayRegions(Partitionings.Hash)
 
