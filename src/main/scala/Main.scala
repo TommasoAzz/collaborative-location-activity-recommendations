@@ -62,7 +62,7 @@ object Main extends App {
    */
 
   // (1) Split dataset into trajectories for each user
-  val pointsByUser = time("groupByKey", datasetRanged.groupByKey()).persist(StorageLevel.MEMORY_AND_DISK)
+  val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
 
   // (2) Compute the stay points
   val computeStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(pointsByUser) _ // The underscore means "partial application".
@@ -74,8 +74,10 @@ object Main extends App {
   // (3) Associate the computed stay points to a specific grid cell. The whole grid refers to the entire world.
   val gridCells = time("computeGridPosition", allStayPoints
     .map(sp => (algorithm.gridcells.computeGridPosition(sp.longitude, sp.latitude), sp))
-    .groupByKey())
-    .map(gridCell => new GridCell(gridCell._1, gridCell._2))
+    .groupByKey()
+    .map(gridCell => new GridCell(gridCell._1, gridCell._2)))
+
+  time("--> action", gridCells.collect())
 
   // (4) Compute stay regions from the grid cells output of (3)
   val computeStayRegions = algorithm.stayregions.computeStayRegions(gridCells) _ // The underscore means "partial application".
@@ -100,7 +102,6 @@ object Main extends App {
     .option("header", value = true)
     .mode("overwrite")
     .csv(outputFolder + "/stayRegions")
-
 
   sparkSession.stop()
 }
