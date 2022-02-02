@@ -14,13 +14,21 @@ object Main extends App {
   /*
    * Checking arguments.
    */
-  if (args.length != 3) {
+  if (args.length != 5) {
     println("Missing arguments")
     throw new MissingConfigurationException
   }
   val master = args(0)
   val datasetPath = args(1)
   val outputFolder = args(2)
+  val stayPointExecution = if(args(3) == "sp=parallel") Executions.Parallel else Executions.Sequential
+  val stayRegionPartitioning = if(args(4) == "sr=hash") Partitionings.Hash else Partitionings.GridCell
+
+  println(s"Master: $master")
+  println(s"Dataset path: $datasetPath")
+  println(s"Output folder: $outputFolder")
+  println(s"Stay Point execution: $stayPointExecution")
+  println(s"Stay Region partitioning: $stayRegionPartitioning")
 
   /*
    * Loading Spark and Hadoop.
@@ -54,28 +62,28 @@ object Main extends App {
    */
 
   // (1) Split dataset into trajectories for each user
-  val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
+  val pointsByUser = time("groupByKey", datasetRanged.groupByKey()).persist(StorageLevel.MEMORY_AND_DISK)
 
   // (2) Compute the stay points
   val computeStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(pointsByUser) _ // The underscore means "partial application".
   // val allStayPoints = computeStayPoints(Executions.Sequential)
-  val allStayPoints = computeStayPoints(Executions.Parallel)
+  val allStayPoints = time("computeStayPoints", computeStayPoints(Executions.Parallel))
 
-  println("Number of stay points: " + allStayPoints.count())
+  println("Number of stay points: " + time("--> action", allStayPoints.count()))
   allStayPoints.persist(StorageLevel.MEMORY_AND_DISK)
 
   // (3) Associate the computed stay points to a specific grid cell. The whole grid refers to the entire world.
-  val gridCells = allStayPoints
+  val gridCells = time("computeGridPosition", allStayPoints
     .map(sp => (algorithm.gridcells.computeGridPosition(sp.longitude, sp.latitude), sp))
-    .groupByKey()
+    .groupByKey())
     .map(gridCell => new GridCell(gridCell._1, gridCell._2))
 
   // (4) Compute stay regions from the grid cells output of (3)
   val computeStayRegions = algorithm.stayregions.computeStayRegions(gridCells) _ // The underscore means "partial application".
-  val stayRegions = computeStayRegions(Partitionings.GridCell)
+  val stayRegions = time("computeStayRegions", computeStayRegions(Partitionings.GridCell))
   // val stayRegions = computeStayRegions(Partitionings.Hash)
 
-  println("Number of stay regions: " + stayRegions.count())
+  println("Number of stay regions: " + time("--> action", stayRegions.count()))
   stayRegions.persist(StorageLevel.MEMORY_AND_DISK)
 
   // (5) Saving the output into CSV files
