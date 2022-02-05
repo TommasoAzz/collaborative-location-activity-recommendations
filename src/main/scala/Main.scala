@@ -14,7 +14,7 @@ object Main extends App {
   /*
    * Checking arguments.
    */
-  if (args.length != 5) {
+  if (args.length != 6) {
     println("Missing arguments")
     throw new MissingConfigurationException
   }
@@ -23,7 +23,7 @@ object Main extends App {
   val outputFolder = args(2)
   val stayPointExecution = if(args(3) == "sp=parallel") Executions.Parallel else Executions.Sequential
   val stayRegionPartitioning = if(args(4) == "sr=hash") Partitionings.Hash else Partitionings.GridCell
-
+  val parallelism = args(5)
   println(s"Master: $master")
   println(s"Dataset path: $datasetPath")
   println(s"Output folder: $outputFolder")
@@ -33,17 +33,22 @@ object Main extends App {
   /*
    * Loading Spark and Hadoop.
    */
-  val sparkSession = SparkProjectConfig.sparkSession(args(0))
+  val sparkSession = SparkProjectConfig.sparkSession(master,parallelism.toInt)
   val sparkContext = sparkSession.sparkContext
 
+println("Initialized spark contextwith parallelism at: "+ SparkProjectConfig.DEFAULT_PARALLELISM )
   /*
    * Loading the dataset.
    */
+
+
   val datasetCSV = sparkSession.read
     .option("header", value = true)
     .option("timestampFormat", TimestampFormatter.timestampPattern)
     .csv(datasetPath)
     .drop("label")
+
+  println("Dataset read")
 
   /*
    * Loading, partitioning and caching the RDD.
@@ -54,6 +59,9 @@ object Main extends App {
     timestamp = row(0).toString
   )))
 
+  println("Datasetpoint rdd created")
+
+
   val partitioner = new RangePartitioner(SparkProjectConfig.DEFAULT_PARALLELISM, datasetRDD)
   val datasetRanged = datasetRDD.partitionBy(partitioner)
 
@@ -62,14 +70,14 @@ object Main extends App {
    */
 
   // (1) Split dataset into trajectories for each user
-  val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
-
+  val pointsByUser = datasetRanged.groupByKey()//.persist(StorageLevel.MEMORY_AND_DISK)
+  println("Partitioned")
   // (2) Compute the stay points
   val computeStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(pointsByUser) _ // The underscore means "partial application".
   val allStayPoints = time("computeStayPoints", computeStayPoints(stayPointExecution))
 
   println("Number of stay points: " + time("--> action", allStayPoints.count()))
-  allStayPoints.persist(StorageLevel.MEMORY_AND_DISK)
+  //allStayPoints.persist(StorageLevel.MEMORY_AND_DISK)
 
   // (3) Associate the computed stay points to a specific grid cell. The whole grid refers to the entire world.
   val gridCells = time("computeGridPosition", allStayPoints
@@ -84,6 +92,7 @@ object Main extends App {
   val stayRegions = time("computeStayRegions", computeStayRegions(stayRegionPartitioning))
 
   println("Number of stay regions: " + time("--> action", stayRegions.count()))
+  /*
   stayRegions.persist(StorageLevel.MEMORY_AND_DISK)
 
   // (5) Saving the output into CSV files
@@ -102,6 +111,6 @@ object Main extends App {
     .option("header", value = true)
     .mode("overwrite")
     .csv(outputFolder + "/stayRegions")
-
+*/
   sparkSession.stop()
 }

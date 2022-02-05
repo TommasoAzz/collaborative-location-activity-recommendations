@@ -3,8 +3,9 @@ package algorithm
 
 import model.{DatasetPoint, StayPoint}
 import config.{AlgorithmConfig, SparkProjectConfig}
-
 import algorithm.staypoints.Executions.Execution
+
+import it.unibo.clar.Main.sparkContext
 import org.apache.spark.{RangePartitioner, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.joda.time.Seconds
@@ -31,7 +32,6 @@ package object staypoints {
 
   private def _computeStayPoints(partition: Seq[DatasetPoint]): Seq[StayPoint] = {
     val points = new ListBuffer[StayPoint] // [SP, SP, P, SP, P, P, P, SP]
-
     var i = 0
     while (i < partition.size) {
       val ith_element = partition(i)

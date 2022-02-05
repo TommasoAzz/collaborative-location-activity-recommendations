@@ -1,5 +1,7 @@
 package it.unibo
 
+import org.apache.spark.SparkContext
+
 package object clar {
   def time[R](label: String, block: => R): R = {
     val t0 = System.nanoTime()
@@ -8,4 +10,6 @@ package object clar {
     println(s"$label - elapsed time: " + (t1 - t0) / 1000000 + "ms")
     result
   }
+
+
 }
