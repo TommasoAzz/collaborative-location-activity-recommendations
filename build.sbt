@@ -22,5 +22,6 @@ lazy val root = (project in file("."))
     assembly / assemblyMergeStrategy := {
       case PathList("META-INF", xs@_*) => MergeStrategy.discard
       case x => MergeStrategy.first
-    }
+    },
+    artifactName := { (sv: ScalaVersion, module: ModuleID, artifact: Artifact) => "clar"}
   )
