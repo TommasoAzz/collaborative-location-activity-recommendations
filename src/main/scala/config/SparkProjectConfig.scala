@@ -16,10 +16,10 @@ object SparkProjectConfig {
     builder.getOrCreate()
   }
 
-  def sparkSession(master: String,parall: Int): SparkSession = {
+  def sparkSession(master: String, parall: Int): SparkSession = {
     val session = _sparkSession(master)
 
-    DEFAULT_PARALLELISM = parall//session.sparkContext.defaultParallelism
+    DEFAULT_PARALLELISM = parall
     session.sparkContext.setLogLevel("WARN")
 
     session

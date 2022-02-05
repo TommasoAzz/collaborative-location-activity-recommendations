@@ -8,7 +8,6 @@ import utils.TimestampFormatter
 
 import algorithm.staypoints.Executions
 import org.apache.spark.RangePartitioner
-import org.apache.spark.storage.StorageLevel
 
 object Main extends App {
   /*
@@ -24,19 +23,20 @@ object Main extends App {
   val stayPointExecution = if(args(3) == "sp=parallel") Executions.Parallel else Executions.Sequential
   val stayRegionPartitioning = if(args(4) == "sr=hash") Partitionings.Hash else Partitionings.GridCell
   val parallelism = args(5)
+
   println(s"Master: $master")
   println(s"Dataset path: $datasetPath")
   println(s"Output folder: $outputFolder")
   println(s"Stay Point execution: $stayPointExecution")
   println(s"Stay Region partitioning: $stayRegionPartitioning")
+  println(s"Initialized Spark Context with parallelism: ${SparkProjectConfig.DEFAULT_PARALLELISM}")
 
   /*
    * Loading Spark and Hadoop.
    */
-  val sparkSession = SparkProjectConfig.sparkSession(master,parallelism.toInt)
+  val sparkSession = SparkProjectConfig.sparkSession(master, parallelism.toInt)
   val sparkContext = sparkSession.sparkContext
 
-println("Initialized spark contextwith parallelism at: "+ SparkProjectConfig.DEFAULT_PARALLELISM )
   /*
    * Loading the dataset.
    */

@@ -5,7 +5,6 @@ import model.{DatasetPoint, StayPoint}
 import config.{AlgorithmConfig, SparkProjectConfig}
 import algorithm.staypoints.Executions.Execution
 
-import it.unibo.clar.Main.sparkContext
 import org.apache.spark.{RangePartitioner, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.joda.time.Seconds
