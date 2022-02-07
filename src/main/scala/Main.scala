@@ -70,14 +70,14 @@ object Main extends App {
    */
 
   // (1) Split dataset into trajectories for each user
-  val pointsByUser = datasetRanged.groupByKey()//.persist(StorageLevel.MEMORY_AND_DISK)
+  val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
   println("Partitioned")
   // (2) Compute the stay points
   val computeStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(pointsByUser) _ // The underscore means "partial application".
   val allStayPoints = time("computeStayPoints", computeStayPoints(stayPointExecution))
 
   println("Number of stay points: " + time("--> action", allStayPoints.count()))
-  //allStayPoints.persist(StorageLevel.MEMORY_AND_DISK)
+  allStayPoints.persist(StorageLevel.MEMORY_AND_DISK)
 
   // (3) Associate the computed stay points to a specific grid cell. The whole grid refers to the entire world.
   val gridCells = time("computeGridPosition", allStayPoints
