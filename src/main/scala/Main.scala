@@ -5,9 +5,10 @@ import config.SparkProjectConfig
 import exception.MissingConfigurationException
 import model.{DatasetPoint, GridCell}
 import utils.TimestampFormatter
-
 import algorithm.staypoints.Executions
+
 import org.apache.spark.RangePartitioner
+import org.apache.spark.storage.StorageLevel
 
 object Main extends App {
   /*
