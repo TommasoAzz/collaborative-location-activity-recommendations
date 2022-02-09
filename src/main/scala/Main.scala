@@ -30,7 +30,7 @@ object Main extends App {
   println(s"Output folder: $outputFolder")
   println(s"Stay Point execution: $stayPointExecution")
   println(s"Stay Region partitioning: $stayRegionPartitioning")
-  println(s"Initialized Spark Context with parallelism: ${SparkProjectConfig.DEFAULT_PARALLELISM}")
+  println(s"Initialized Spark Context with parallelism: $parallelism")
 
   /*
    * Loading Spark and Hadoop.
