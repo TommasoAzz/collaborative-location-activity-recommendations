@@ -41,8 +41,6 @@ object Main extends App {
   /*
    * Loading the dataset.
    */
-
-
   val datasetCSV = sparkSession.read
     .option("header", value = true)
     .option("timestampFormat", TimestampFormatter.timestampPattern)
@@ -52,35 +50,16 @@ object Main extends App {
   println("Dataset read")
 
   /*
-   * Loading, partitioning and caching the RDD.
-   */
-  val datasetRDD = datasetCSV.rdd.map(row => (row(4).toString.toInt, new DatasetPoint(
-    latitude = row(1).toString,
-    longitude = row(2).toString,
-    timestamp = row(0).toString
-  )))
-
-  println("Datasetpoint rdd created")
-
-
-  val partitioner = new RangePartitioner(SparkProjectConfig.DEFAULT_PARALLELISM, datasetRDD)
-  val datasetRanged = datasetRDD.partitionBy(partitioner)
-
-  /*
    * Algorithm implementation.
    */
-
-  // (1) Split dataset into trajectories for each user
-  val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
-  println("Partitioned")
-  // (2) Compute the stay points
-  val computeStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(pointsByUser) _ // The underscore means "partial application".
+  // (1) Compute the stay points
+  val computeStayPoints = algorithm.staypoints.computeStayPoints(sparkContext)(datasetCSV) _ // The underscore means "partial application".
   val allStayPoints = time("computeStayPoints", computeStayPoints(stayPointExecution))
 
   println("Number of stay points: " + time("--> action", allStayPoints.count()))
   allStayPoints.persist(StorageLevel.MEMORY_AND_DISK)
 
-  // (3) Associate the computed stay points to a specific grid cell. The whole grid refers to the entire world.
+  // (2) Associate the computed stay points to a specific grid cell. The whole grid refers to the entire world.
   val gridCells = time("computeGridPosition", allStayPoints
     .map(sp => (algorithm.gridcells.computeGridPosition(sp.longitude, sp.latitude), sp))
     .groupByKey()
@@ -88,15 +67,14 @@ object Main extends App {
 
   time("--> action", gridCells.collect())
 
-  // (4) Compute stay regions from the grid cells output of (3)
+  // (3) Compute stay regions from the grid cells output of (3)
   val computeStayRegions = algorithm.stayregions.computeStayRegions(gridCells) _ // The underscore means "partial application".
   val stayRegions = time("computeStayRegions", computeStayRegions(stayRegionPartitioning))
 
   println("Number of stay regions: " + time("--> action", stayRegions.count()))
-  /*
-  stayRegions.persist(StorageLevel.MEMORY_AND_DISK)
 
-  // (5) Saving the output into CSV files
+  // (4) Saving the output into CSV files
+  /*
   sparkSession.createDataFrame(allStayPoints.map(_.toCSVTuple))
     .toDF("longitude", "latitude", "timeOfArrival", "timeOfLeave")
     .coalesce(1)
@@ -112,6 +90,6 @@ object Main extends App {
     .option("header", value = true)
     .mode("overwrite")
     .csv(outputFolder + "/stayRegions")
-*/
+  */
   sparkSession.stop()
 }

@@ -7,27 +7,43 @@ import algorithm.staypoints.Executions.Execution
 
 import org.apache.spark.{RangePartitioner, SparkContext}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.storage.StorageLevel
 import org.joda.time.Seconds
 
 import scala.collection.mutable.ListBuffer
 
 package object staypoints {
-  def computeStayPoints(sparkContext: SparkContext)(datasetPoints: RDD[(Int, Iterable[DatasetPoint])])(execution: Execution): RDD[StayPoint] = {
+  def computeStayPoints(sparkContext: SparkContext)(csvDataset: DataFrame)(execution: Execution): RDD[StayPoint] = {
     execution match {
-      case Executions.Sequential => sparkContext
-        .parallelize(datasetPoints
-          .map(pair => _computeStayPoints(pair._2.toSeq))
-          .reduce(_ ++ _)
+      case Executions.Sequential =>
+        val datasetRdd = csvDataset.rdd.map(_fromDataFrameRowToRDDPair)
+        val datasetRanged = datasetRdd.partitionBy(new RangePartitioner(SparkProjectConfig.DEFAULT_PARALLELISM, datasetRdd))
+        val pointsByUser = datasetRanged.groupByKey().persist(StorageLevel.MEMORY_AND_DISK)
+        sparkContext.parallelize(
+          pointsByUser.map(
+            pair => _computeStayPoints(pair._2.toSeq)
+          ).reduce(_ ++ _)
         )
-      case Executions.Parallel => datasetPoints
-        .collectAsMap()
-        .map(pair => sparkContext.parallelize(pair._2.toSeq))
-        .map(_.map(t => (t.timestamp.toInstant.getMillis, t)))
-        .map(trajectory => trajectory.partitionBy(new RangePartitioner(SparkProjectConfig.DEFAULT_PARALLELISM, trajectory)))
-        .map(_.mapPartitions(partition => _computeStayPoints(partition.toSeq.map(_._2)).iterator))
-        .reduce(_ ++ _)
+      case Executions.Parallel =>
+        val cardinality = csvDataset.agg(("user", "max")).collect()(0).getString(0).toInt + 1
+        val rdds = for {
+          i <- 0 until cardinality
+        } yield csvDataset.where(s"user == $i").rdd.map(_fromDataFrameRowToRDDPair).persist(StorageLevel.MEMORY_AND_DISK)
+        val rangedRdds = rdds.map(rdd => rdd.partitionBy(new RangePartitioner(SparkProjectConfig.DEFAULT_PARALLELISM, rdd)))
+        rangedRdds.map(
+          _.mapPartitions(partition => _computeStayPoints(partition.toSeq.map(_._2)).iterator)
+        ).reduce(_ ++ _)
     }
   }
+
+  private def _fromDataFrameRowToRDDPair(row: Row): (Int, DatasetPoint) = (
+    row(4).toString.toInt, new DatasetPoint(
+      latitude = row(1).toString,
+      longitude = row(2).toString,
+      timestamp = row(0).toString
+    )
+  )
 
   private def _computeStayPoints(partition: Seq[DatasetPoint]): Seq[StayPoint] = {
     val points = new ListBuffer[StayPoint] // [SP, SP, P, SP, P, P, P, SP]
