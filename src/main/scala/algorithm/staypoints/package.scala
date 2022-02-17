@@ -29,8 +29,10 @@ package object staypoints {
         val cardinality = csvDataset.agg(("user", "max")).collect()(0).getString(0).toInt + 1
         val rdds = for {
           i <- 0 until cardinality
-        } yield csvDataset.where(s"user == $i").rdd.map(_fromDataFrameRowToRDDPair).persist(StorageLevel.MEMORY_AND_DISK)
-        val rangedRdds = rdds.map(rdd => rdd.partitionBy(new RangePartitioner(SparkProjectConfig.DEFAULT_PARALLELISM, rdd)))
+        } yield csvDataset.where(s"user == $i").rdd.map(_fromDataFrameRowToRDDPair)
+        val rangedRdds = rdds.map(rdd => rdd
+          .partitionBy(new RangePartitioner(SparkProjectConfig.DEFAULT_PARALLELISM, rdd))
+          .persist(StorageLevel.MEMORY_AND_DISK))
         rangedRdds.map(
           _.mapPartitions(partition => _computeStayPoints(partition.toSeq.map(_._2)).iterator)
         ).reduce(_ ++ _)
