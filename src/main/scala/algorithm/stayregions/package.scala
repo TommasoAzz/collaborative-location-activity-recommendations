@@ -8,36 +8,22 @@ import algorithm.gridcells.GridCellPartitioner
 import algorithm.stayregions.Partitionings.Partitioning
 import org.apache.spark.rdd.RDD
 
-import scala.collection.mutable.ListBuffer
-
 
 package object stayregions {
   def computeStayRegions(gridCells: RDD[GridCell])(partitioning: Partitioning): RDD[StayRegion] = {
-    // val neighbourRatios = new ListBuffer[Seq[Double]]
-
     val results = partitioning match {
       case Partitionings.GridCell => gridCells
         .map(gc => (gc.position, gc))
         .partitionBy(new GridCellPartitioner(SparkProjectConfig.DEFAULT_PARALLELISM))
-        .mapPartitions(pairs => {
-          val result = _computeStayRegions(pairs.map(_._2))
-          // neighbourRatios += result._2
-          // println(s"Partition mean neighbour ratio: ${result._2.sum / result._2.size} (${result._2.sum}, ${result._2.size})")
-          result
-        })
+        .mapPartitions(pairs => _computeStayRegions(pairs.map(_._2)))
       case Partitionings.Hash => gridCells
-        .mapPartitions(cells => {
-          val result = _computeStayRegions(cells)
-          // neighbourRatios += result._2
-          result
-        })
+        .mapPartitions(cells => _computeStayRegions(cells))
     }
 
-    // val ratios = neighbourRatios.filter(_.nonEmpty).map(ratios => ratios.sum / ratios.size)
     val nonNullRatios = results.map(_._2).filter(_ >= 0.0)
     val meanRatio = nonNullRatios.sum / nonNullRatios.count
 
-    println(s"Mean neighbour ratios: $meanRatio")
+    println(s"Mean neighbour ratio: $meanRatio")
 
     results.map(_._1)
   }
@@ -53,8 +39,8 @@ package object stayregions {
       i <- sortedCells.indices
       if !sortedCells(i).assigned // if not already assigned to a stay region
     } yield computeStayRegion(i, sortedCells)).filter(_._3 >= AlgorithmConfig.MIN_NUM_STAY_POINTS_PER_REGION)
+    // computeStayRegion has a side effect: it updates the assigned flag of the grid cell
 
-    // (stayRegionsAndRatios.map(_._1).iterator, stayRegionsAndRatios.map(_._2).iterator)
     stayRegionsAndRatios.map(sr => (sr._1, sr._2)).iterator
   }
 

@@ -39,14 +39,14 @@ package object staypoints {
 
   private def _fromDataFrameRowToRDDPair(row: Row): (Int, DatasetPoint) = (
     row(4).toString.toInt, new DatasetPoint(
-      latitude = row(1).toString,
-      longitude = row(2).toString,
-      timestamp = row(0).toString
-    )
+    latitude = row(1).toString,
+    longitude = row(2).toString,
+    timestamp = row(0).toString
+  )
   )
 
   private def _computeStayPoints(partition: Seq[DatasetPoint]): Seq[StayPoint] = {
-    val points = new ListBuffer[StayPoint] // [SP, SP, P, SP, P, P, P, SP]
+    val points = new ListBuffer[StayPoint]
     var i = 0
     while (i < partition.size) {
       val ith_element = partition(i)
@@ -55,7 +55,7 @@ package object staypoints {
       var inside = true
       while (j < partition.size && inside) {
         val jth_element = partition(j)
-
+        // DISTANCE CHECK
         val distance = Haversine(
           lat1 = ith_element.latitude,
           lon1 = ith_element.longitude,

@@ -3,11 +3,10 @@ package it.unibo.clar
 import algorithm.stayregions.Partitionings
 import config.SparkProjectConfig
 import exception.MissingConfigurationException
-import model.{DatasetPoint, GridCell}
+import model.GridCell
 import utils.TimestampFormatter
 import algorithm.staypoints.Executions
 
-import org.apache.spark.RangePartitioner
 import org.apache.spark.storage.StorageLevel
 
 object Main extends App {
@@ -21,16 +20,17 @@ object Main extends App {
   val master = args(0)
   val datasetPath = args(1)
   val outputFolder = args(2)
-  val stayPointExecution = if(args(3) == "sp=parallel") Executions.Parallel else Executions.Sequential
-  val stayRegionPartitioning = if(args(4) == "sr=hash") Partitionings.Hash else Partitionings.GridCell
+  val stayPointExecution = if (args(3) == "sp=parallel") Executions.Parallel else Executions.Sequential
+  val stayRegionPartitioning = if (args(4) == "sr=hash") Partitionings.Hash else Partitionings.GridCell
   val parallelism = args(5)
 
-  println(s"Master: $master")
-  println(s"Dataset path: $datasetPath")
-  println(s"Output folder: $outputFolder")
-  println(s"Stay Point execution: $stayPointExecution")
-  println(s"Stay Region partitioning: $stayRegionPartitioning")
-  println(s"Initialized Spark Context with parallelism: $parallelism")
+  println("Configuration:")
+  println(s"- master: $master")
+  println(s"- dataset path: $datasetPath")
+  println(s"- output folder: $outputFolder")
+  println(s"- stay Point execution: $stayPointExecution")
+  println(s"- stay Region partitioning: $stayRegionPartitioning")
+  println(s"- initialized Spark Context with parallelism: $parallelism")
 
   /*
    * Loading Spark and Hadoop.
@@ -47,7 +47,7 @@ object Main extends App {
     .csv(datasetPath)
     .drop("label")
 
-  println("Dataset read")
+  println("Dataset loaded!")
 
   /*
    * Algorithm implementation.
@@ -74,7 +74,6 @@ object Main extends App {
   println("Number of stay regions: " + time("--> action", stayRegions.count()))
 
   // (4) Saving the output into CSV files
-  /*
   sparkSession.createDataFrame(allStayPoints.map(_.toCSVTuple))
     .toDF("longitude", "latitude", "timeOfArrival", "timeOfLeave")
     .coalesce(1)
@@ -90,6 +89,6 @@ object Main extends App {
     .option("header", value = true)
     .mode("overwrite")
     .csv(outputFolder + "/stayRegions")
-  */
+
   sparkSession.stop()
 }
